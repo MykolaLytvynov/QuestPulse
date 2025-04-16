@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  photo-service:
+    build:
+      context: .
+      dockerfile: photo-service/Dockerfile
+    container_name: photo-service
+    ports:
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: always
+    networks:
+      - quest-pulse-backend
+    env_file:
+      - .env
+
+  quest-service:
+    build:
+      context: .
+      dockerfile: quest-service/Dockerfile
+    container_name: quest-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: always
+    networks:
+      - quest-pulse-backend
+    env_file:
+      - .env
+
+  bot-service:
+    build:
+      context: .
+      dockerfile: bot-service/Dockerfile
+    container_name: bot-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: always
+    networks:
+      - quest-pulse-backend
+    env_file:
+      - .env
+
+  postgres:
+    image: postgres:15
+    container_name: quest-pulse-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_DATABASE}
+      POSTGRES_USER: ${POSTGRES_DB_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quest-pulse-backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: quest-pulse-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quest-pulse-backend
+
+  minio:
+    image: minio/minio
+    container_name: quest-pulse-minio
+    command: server --console-address ":9001" /data
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quest-pulse-backend
+
+networks:
+  quest-pulse-backend:
+    driver: bridge
+
+volumes:
+  pgdata:
+  minio-data:
