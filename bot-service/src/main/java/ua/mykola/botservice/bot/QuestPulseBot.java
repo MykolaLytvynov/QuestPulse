@@ -94,7 +94,7 @@ public class QuestPulseBot extends TelegramLongPollingBot {
                 showMainMenu(chatId);
             }
             case BOOK -> requestAvailableQuests(chatId);
-            case DETAILS_MY_BOOKS -> requestBookedQuests(chatId);
+            case DETAILS_MY_BOOKINGS -> requestBookedQuests(chatId);
         }
     }
 

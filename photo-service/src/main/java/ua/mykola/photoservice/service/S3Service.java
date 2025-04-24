@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 
@@ -33,15 +34,19 @@ public class S3Service {
         try {
             // Check if the bucket already exists
             s3Client.headBucket(builder -> builder.bucket(bucketName));
-            LOG.info("Bucket {} exists.", bucketName);
-        } catch (Exception e) {
+            LOG.debug("Bucket {} exists.", bucketName);
+        } catch (S3Exception e) {
             // If not, attempt to create the bucket
-            try {
-                s3Client.createBucket(builder -> builder.bucket(bucketName));
-                LOG.info("Bucket {} created successfully.", bucketName);
-            } catch (Exception ex) {
-                LOG.error("Failed to create bucket {}: {}", bucketName, ex.getMessage());
+            if (e.statusCode() == 404) {
+                try {
+                    s3Client.createBucket(builder -> builder.bucket(bucketName));
+                    LOG.info("Bucket {} created successfully.", bucketName);
+                } catch (S3Exception ex) {
+                    LOG.error("Failed to create bucket {}: {}", bucketName, ex.awsErrorDetails().errorMessage());
+                }
             }
+        } catch (Exception e) {
+            LOG.error("Unexpected error checking or creating bucket {}: {}", bucketName, e.getMessage());
         }
     }
 

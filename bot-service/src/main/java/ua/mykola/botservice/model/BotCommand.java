@@ -5,7 +5,7 @@ import java.util.Arrays;
 public enum BotCommand {
     START("/start"),
     BOOK("/book"),
-    DETAILS_MY_BOOKS("/details");
+    DETAILS_MY_BOOKINGS("/details");
 
     private final String command;
 
